@@ -1,0 +1,36 @@
+{
+  "schema_version": "1.0",
+  "character_id": "demo_modern_001",
+  "identity_version": 1,
+  "look_id": "urban_white_shirt",
+  "look_version": 1,
+  "condition_id": "neutral",
+  "board_version": 1,
+  "project_state": "spec_locked",
+  "rendering_style": "photoreal",
+  "spec_revision": 1,
+  "reference_registry": [
+    {"reference_id": "ref_face_001", "asset_path": "../generated/modern-urban-board.png", "role": ["identity"], "scope": ["face"], "source": "generated", "limitations": ["演示资产板代替原始头像，仅用于规格示例"]}
+  ],
+  "part_coverage": [
+    {"part_id": "shirt_01", "required_by": "user", "anatomical_side": "not_applicable", "attachment_location": "torso", "visible_in": ["front", "left_profile", "back"], "occluded_in": [], "coverage_cells": ["front", "left_profile", "back"], "detail_priority": "required", "reference_source": "design_completion", "qa_status": "pending"}
+  ],
+  "view_tasks": [
+    {"task_id": "body_front", "spec_revision": 1, "view_id": "front", "framing": "full_body", "status": "planned", "asset_path": null, "qa_result": "pending", "attempt_count": 0},
+    {"task_id": "body_left", "spec_revision": 1, "view_id": "left_profile", "framing": "full_body", "status": "planned", "asset_path": null, "qa_result": "pending", "attempt_count": 0},
+    {"task_id": "body_back", "spec_revision": 1, "view_id": "back", "framing": "full_body", "status": "planned", "asset_path": null, "qa_result": "pending", "attempt_count": 0},
+    {"task_id": "face_front", "spec_revision": 1, "view_id": "front", "framing": "face", "status": "planned", "asset_path": null, "qa_result": "pending", "attempt_count": 0}
+  ],
+  "review_method": null,
+  "user_approved": false,
+  "inputs": {"identity_reference": "ref_face_001", "additional_references": [], "user_requirements": ["现代都市", "白衬衫", "无饰品"], "output_mode": "generate", "board_content": "asset_board"},
+  "routing": {"genre": "modern", "genre_source": "user", "era": null, "profiles": ["modern-basic"], "inference_notes": []},
+  "identity": {"reference_id": "ref_face_001", "features": [{"id": "demo_identity", "description": "仅供虚构演示", "source": "design_completion", "visibility": "visible", "lock_policy": "strict"}], "lock_status": "provisional", "input_quality": "usable"},
+  "body": {"height_cm": null, "proportions": "natural", "source": "design_default"},
+  "costume": {"layers": [{"id": "shirt_01", "description": "无图案白衬衫与深色直筒长裤"}], "hair": {"id": "hair_01", "description": "简洁短发"}, "headwear": [], "accessories": [], "footwear": {"id": "shoe_01", "description": "黑色低帮鞋"}, "front_structure": {"description": "单排纽扣"}, "side_structure": {"description": "直身轮廓"}, "back_structure": {"description": "简洁后育克"}, "forbidden_additions": ["耳环", "项链", "印花", "胸针"]},
+  "complexity": {"dimensions": {"clothing_layers": 0, "head_design": 0, "patterns_materials": 0, "accessories_props": 0, "side_asymmetry": 0, "occlusion_back": 0}, "score": 0, "tier": "simple", "required_details": []},
+  "board": {"mode": "auto", "layout_id": "simple_three_view", "body_views": ["front", "left_profile", "back"], "face_views": ["front", "left_three_quarter"], "detail_ids": [], "target_canvas": [4096, 3072], "actual_canvas": null},
+  "generation": {"strategy": "anchor_then_views", "adapter": "host-image-tool", "anchor_asset_id": null, "budget": {"max_image_requests": 16, "max_total_repairs": 4, "max_repairs_per_unit": 2}, "calls": []},
+  "qa": {"status": "pending", "checks": [], "unverified_items": ["原始头像未包含在公开演示仓库"]},
+  "artifacts": []
+}

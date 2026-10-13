@@ -1,0 +1,33 @@
+{
+  "schema_version": "1.0",
+  "layouts": {
+    "simple_three_view": {
+      "canvas": [4096, 3072],
+      "body_columns": 3,
+      "body_fraction": 0.75,
+      "max_face_cells": 2,
+      "max_detail_cells": 1
+    },
+    "standard_asset_board": {
+      "canvas": [4096, 3072],
+      "body_columns": 3,
+      "body_fraction": 0.70,
+      "max_face_cells": 3,
+      "max_detail_cells": 3
+    },
+    "complex_asset_board": {
+      "canvas": [6144, 4096],
+      "body_columns": 4,
+      "body_fraction": 0.68,
+      "max_face_cells": 3,
+      "max_detail_cells": 4
+    },
+    "body_only_three_view": {
+      "canvas": [4096, 3072],
+      "body_columns": 3,
+      "body_fraction": 1.0,
+      "max_face_cells": 0,
+      "max_detail_cells": 0
+    }
+  }
+}

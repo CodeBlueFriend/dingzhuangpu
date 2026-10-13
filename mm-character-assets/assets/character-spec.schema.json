@@ -1,0 +1,162 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/mm-character-assets/character-spec.schema.json",
+  "title": "定妆谱人物资产规格",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "schema_version", "character_id", "identity_version", "look_id",
+    "look_version", "condition_id", "board_version", "project_state",
+    "rendering_style", "spec_revision", "reference_registry", "part_coverage",
+    "view_tasks", "review_method", "user_approved", "inputs", "routing",
+    "identity", "body", "costume", "complexity", "board", "generation", "qa", "artifacts"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "character_id": {"type": "string", "minLength": 1},
+    "identity_version": {"type": "integer", "minimum": 1},
+    "look_id": {"type": "string", "minLength": 1},
+    "look_version": {"type": "integer", "minimum": 1},
+    "condition_id": {"type": "string", "minLength": 1},
+    "board_version": {"type": "integer", "minimum": 1},
+    "spec_revision": {"type": "integer", "minimum": 1},
+    "project_state": {
+      "enum": ["received", "analyzed", "spec_locked", "anchor_ready", "views_ready", "assembled", "delivered", "repairing", "blocked", "needs_review", "draft_failed", "prompt_package_ready", "cancelled"]
+    },
+    "rendering_style": {"enum": ["photoreal", "illustration_2d", "stylized_3d", "custom"]},
+    "review_method": {"type": ["string", "null"]},
+    "user_approved": {"type": "boolean"},
+    "reference_registry": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["reference_id", "asset_path", "role", "scope", "source", "limitations"],
+        "properties": {
+          "reference_id": {"type": "string", "minLength": 1},
+          "asset_path": {"type": "string", "minLength": 1},
+          "role": {"type": "array", "items": {"enum": ["identity", "body", "costume", "hair", "headwear", "footwear", "prop"]}},
+          "scope": {"type": "array", "items": {"type": "string"}},
+          "source": {"enum": ["user", "derived", "generated"]},
+          "limitations": {"type": "array", "items": {"type": "string"}}
+        }
+      }
+    },
+    "part_coverage": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["part_id", "required_by", "visible_in", "occluded_in", "coverage_cells", "detail_priority", "reference_source", "qa_status"],
+        "properties": {
+          "part_id": {"type": "string", "minLength": 1},
+          "required_by": {"type": "string", "minLength": 1},
+          "anatomical_side": {"enum": ["left", "right", "center", "bilateral", "not_applicable"]},
+          "attachment_location": {"type": ["string", "null"]},
+          "visible_in": {"type": "array", "items": {"type": "string"}},
+          "occluded_in": {"type": "array", "items": {"type": "string"}},
+          "coverage_cells": {"type": "array", "items": {"type": "string"}},
+          "detail_priority": {"enum": ["required", "important", "optional"]},
+          "reference_source": {"enum": ["user", "reference_visible", "design_completion", "unresolved"]},
+          "qa_status": {"enum": ["pending", "pass", "fail", "uncertain"]}
+        }
+      }
+    },
+    "view_tasks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["task_id", "spec_revision", "view_id", "framing", "status", "attempt_count"],
+        "properties": {
+          "task_id": {"type": "string", "minLength": 1},
+          "spec_revision": {"type": "integer", "minimum": 1},
+          "view_id": {"type": "string", "minLength": 1},
+          "framing": {"enum": ["full_body", "face", "detail", "board"]},
+          "status": {"enum": ["planned", "running", "succeeded", "failed", "unknown", "invalidated"]},
+          "asset_path": {"type": ["string", "null"]},
+          "qa_result": {"enum": ["pending", "pass", "fail", "uncertain"]},
+          "attempt_count": {"type": "integer", "minimum": 0}
+        }
+      }
+    },
+    "inputs": {
+      "type": "object",
+      "required": ["identity_reference", "additional_references", "user_requirements", "output_mode", "board_content"],
+      "properties": {
+        "identity_reference": {"type": "string", "minLength": 1},
+        "additional_references": {"type": "array", "items": {"type": "string"}},
+        "user_requirements": {"type": "array", "items": {"type": "string"}},
+        "output_mode": {"enum": ["generate", "prompt_package"]},
+        "board_content": {"enum": ["asset_board", "body_only"]}
+      }
+    },
+    "routing": {
+      "type": "object",
+      "required": ["genre", "genre_source", "profiles", "inference_notes"],
+      "properties": {
+        "genre": {"type": "string", "minLength": 1},
+        "genre_source": {"enum": ["user", "reference_visible", "story_inference", "design_default"]},
+        "era": {"type": ["string", "null"]},
+        "profiles": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+        "inference_notes": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "identity": {
+      "type": "object",
+      "required": ["reference_id", "features", "lock_status", "input_quality"],
+      "properties": {
+        "reference_id": {"type": "string", "minLength": 1},
+        "features": {"type": "array"},
+        "lock_status": {"enum": ["provisional", "verified_anchor"]},
+        "input_quality": {"enum": ["usable", "limited", "missing_required"]}
+      }
+    },
+    "body": {"type": "object", "required": ["height_cm", "proportions", "source"]},
+    "costume": {
+      "type": "object",
+      "required": ["layers", "hair", "headwear", "accessories", "footwear", "front_structure", "side_structure", "back_structure", "forbidden_additions"]
+    },
+    "complexity": {
+      "type": "object",
+      "required": ["dimensions", "score", "tier", "required_details"],
+      "properties": {
+        "dimensions": {"type": "object"},
+        "score": {"type": "integer", "minimum": 0, "maximum": 12},
+        "tier": {"enum": ["simple", "medium", "complex"]},
+        "required_details": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "board": {
+      "type": "object",
+      "required": ["mode", "layout_id", "body_views", "face_views", "detail_ids", "target_canvas", "actual_canvas"],
+      "properties": {
+        "mode": {"enum": ["auto", "three_view", "multiview", "custom"]},
+        "layout_id": {"type": "string", "minLength": 1},
+        "body_views": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string"}},
+        "face_views": {"type": "array", "uniqueItems": true, "items": {"type": "string"}},
+        "detail_ids": {"type": "array", "uniqueItems": true, "items": {"type": "string"}},
+        "target_canvas": {"type": "array", "prefixItems": [{"type": "integer", "minimum": 1}, {"type": "integer", "minimum": 1}], "minItems": 2, "maxItems": 2},
+        "actual_canvas": {"type": ["array", "null"]}
+      }
+    },
+    "generation": {
+      "type": "object",
+      "required": ["strategy", "adapter", "anchor_asset_id", "budget", "calls"],
+      "properties": {
+        "strategy": {"enum": ["anchor_then_views", "single_board", "prompt_only"]},
+        "adapter": {"type": ["string", "null"]},
+        "anchor_asset_id": {"type": ["string", "null"]},
+        "budget": {
+          "type": "object",
+          "required": ["max_image_requests", "max_total_repairs", "max_repairs_per_unit"],
+          "properties": {
+            "max_image_requests": {"type": "integer", "minimum": 0},
+            "max_total_repairs": {"type": "integer", "minimum": 0},
+            "max_repairs_per_unit": {"type": "integer", "minimum": 0}
+          }
+        },
+        "calls": {"type": "array"}
+      }
+    },
+    "qa": {"type": "object", "required": ["status", "checks", "unverified_items"]},
+    "artifacts": {"type": "array"}
+  }
+}
