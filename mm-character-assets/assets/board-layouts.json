@@ -1,41 +1,45 @@
 {
-  "schema_version": "1.1",
+  "schema_version": "1.2",
   "defaults": {
     "orientation": "landscape",
     "aspect_ratio": [16, 9],
     "frame_color": "#FFFFFF",
     "inner_background": "#F4F5F6",
-    "region_width_ratios": [0.46, 0.24, 0.30],
+    "upper_region_width_ratios": [0.62, 0.38],
+    "content_height_ratios": [0.685, 0.315],
+    "detail_placement": "bottom",
+    "labels": {"language": "zh-CN", "position": "outside_image", "cell_label_height_at_6144": 48},
+    "detail_groups": ["facial", "style_or_equipment", "footwear_or_feet"],
     "column_gap_at_6144": 32,
     "cell_gap_at_6144": 24
   },
   "layouts": {
-    "landscape_enhanced_three_view": {
+    "landscape_top_views_bottom_details": {
       "canvas": [6144, 3456],
       "frame_width": 72,
       "body_views": 3,
       "face_cells": 3,
-      "detail_columns": 2,
-      "detail_rows": 4,
+      "detail_columns": 8,
+      "detail_rows": 1,
       "detail_cells": 8
     },
-    "landscape_enhanced_complex": {
+    "landscape_top_views_bottom_details_complex": {
       "canvas": [7680, 4320],
       "frame_width": 88,
       "body_views": 4,
       "face_cells": 3,
-      "detail_columns": 2,
-      "detail_rows": 5,
+      "detail_columns": 10,
+      "detail_rows": 1,
       "detail_cells": 10
     },
-    "landscape_compact_three_view": {
+    "landscape_top_views_bottom_details_compact": {
       "canvas": [4096, 2304],
       "frame_width": 48,
       "body_views": 3,
       "face_cells": 2,
       "detail_cells_max": 2
     },
-    "landscape_body_only": {
+    "landscape_top_views_body_only": {
       "canvas": [4096, 2304],
       "frame_width": 48,
       "face_cells": 0,
@@ -44,10 +48,11 @@
   },
   "geometry_example_6144x3456": {
     "inner": [72, 72, 6000, 3312],
-    "title": [72, 72, 6000, 80],
-    "body_region": [72, 152, 2736, 3168],
-    "face_region": [2840, 152, 1424, 3168],
-    "detail_region": [4296, 152, 1776, 3168],
+    "title": [72, 72, 6000, 96],
+    "body_region": [72, 192, 3696, 2104],
+    "face_region": [3800, 192, 2272, 2104],
+    "detail_region": [72, 2328, 6000, 968],
+    "detail_group_title_widths": [1482, 2988, 1482],
     "footer": [72, 3320, 6000, 64]
   }
 }

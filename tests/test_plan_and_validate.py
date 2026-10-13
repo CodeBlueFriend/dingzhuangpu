@@ -15,7 +15,7 @@ from mm_character_assets_import import compose_board, plan_board, validate_spec 
 
 def base_spec() -> dict:
     return {
-        "schema_version": "1.1",
+        "schema_version": "1.2",
         "character_id": "char_test",
         "identity_version": 1,
         "look_id": "look_001",
@@ -67,14 +67,18 @@ def base_spec() -> dict:
             "score": 0, "tier": "simple", "required_details": []
         },
         "board": {
-            "mode": "auto", "layout_id": "landscape_enhanced_three_view", "detail_level": "enhanced",
+            "mode": "auto", "layout_id": "landscape_top_views_bottom_details", "detail_level": "enhanced",
             "orientation": "landscape", "aspect_ratio": [16, 9],
             "outer_frame": {"enabled": True, "color": "#FFFFFF", "width_px": 72},
-            "inner_background": "#F4F5F6", "region_width_ratios": [0.46, 0.24, 0.30],
+            "inner_background": "#F4F5F6", "upper_region_width_ratios": [0.62, 0.38],
+            "content_height_ratios": [0.685, 0.315], "detail_placement": "bottom",
+            "labels": {"enabled": True, "language": "zh-CN", "section_titles_enabled": True,
+                       "per_cell_labels_enabled": True, "position": "outside_image",
+                       "cell_label_height_px": 48, "title_color": "#30343B", "label_color": "#4B515B"},
             "required_detail_categories": ["eyes_brows", "nose_lips", "footwear_or_feet"],
             "body_views": ["front", "left_profile", "back"],
             "face_views": ["front", "left_three_quarter", "left_profile"],
-            "detail_ids": ["eyes_brows", "nose_lips", "footwear_three_quarter", "footwear_profile", "hair_back", "neckline", "waist_or_hem", "cuff"],
+            "detail_ids": ["eyes_brows", "nose_lips", "hair_back", "neckline", "waist_or_hem", "cuff", "footwear_three_quarter", "footwear_profile"],
             "target_canvas": [6144, 3456], "actual_canvas": None
         },
         "generation": {
@@ -91,11 +95,15 @@ class PlanTests(unittest.TestCase):
         result = plan_board.plan(base_spec())
         self.assertEqual(result["board"]["body_views"], ["front", "left_profile", "back"])
         self.assertEqual(result["complexity"], {"score": 0, "tier": "simple"})
-        self.assertEqual(result["board"]["layout_id"], "landscape_enhanced_three_view")
+        self.assertEqual(result["board"]["layout_id"], "landscape_top_views_bottom_details")
+        self.assertEqual(result["board"]["detail_placement"], "bottom")
+        self.assertEqual(result["board"]["labels"]["language"], "zh-CN")
         self.assertEqual(result["board"]["target_canvas"], [6144, 3456])
         self.assertEqual(result["board"]["face_views"], ["front", "left_three_quarter", "left_profile"])
         self.assertEqual(len(result["board"]["detail_ids"]), 8)
         self.assertTrue(set(plan_board.CORE_DETAILS).issubset(result["board"]["detail_ids"]))
+        self.assertEqual(result["board"]["detail_ids"][:2], plan_board.FACIAL_DETAILS)
+        self.assertEqual(result["board"]["detail_ids"][-2:], plan_board.FOOTWEAR_DETAILS)
         self.assertEqual(result["budget"]["base_image_requests"], 14)
 
     def test_complex_asymmetry_adds_real_right_side(self):
@@ -123,7 +131,7 @@ class PlanTests(unittest.TestCase):
         result = plan_board.plan(spec)
         self.assertEqual(result["board"]["face_views"], [])
         self.assertEqual(result["board"]["detail_ids"], [])
-        self.assertEqual(result["board"]["layout_id"], "landscape_body_only")
+        self.assertEqual(result["board"]["layout_id"], "landscape_top_views_body_only")
         self.assertEqual(result["board"]["target_canvas"], [4096, 2304])
 
     def test_compact_requires_explicit_detail_level_and_keeps_landscape_frame(self):
@@ -132,7 +140,7 @@ class PlanTests(unittest.TestCase):
         spec["board"]["face_views"] = []
         spec["board"]["detail_ids"] = []
         result = plan_board.plan(spec)
-        self.assertEqual(result["board"]["layout_id"], "landscape_compact_three_view")
+        self.assertEqual(result["board"]["layout_id"], "landscape_top_views_bottom_details_compact")
         self.assertEqual(result["board"]["face_views"], ["front", "left_three_quarter"])
         self.assertEqual(result["board"]["outer_frame"]["width_px"], 48)
 
@@ -178,6 +186,12 @@ class ValidateTests(unittest.TestCase):
         errors = validate_spec.validate(spec, ROOT, check_files=False)
         self.assertTrue(any("lacks core details" in error for error in errors))
 
+    def test_v13_rejects_detail_order_that_breaks_group_titles(self):
+        spec = base_spec()
+        spec["board"]["detail_ids"] = ["eyes_brows", "nose_lips", "footwear_three_quarter", "footwear_profile", "hair_back", "neckline", "waist_or_hem", "cuff"]
+        errors = validate_spec.validate(spec, ROOT, check_files=False)
+        self.assertTrue(any("detail order" in error for error in errors))
+
     def test_wrong_frame_width_and_portrait_canvas_fail(self):
         spec = base_spec()
         spec["board"]["target_canvas"] = [3456, 6144]
@@ -185,6 +199,14 @@ class ValidateTests(unittest.TestCase):
         errors = validate_spec.validate(spec, ROOT, check_files=False)
         self.assertTrue(any("landscape 16:9" in error for error in errors))
         self.assertTrue(any("rounded to 8px" in error for error in errors))
+
+    def test_v13_rejects_missing_chinese_label_contract(self):
+        spec = base_spec()
+        spec["board"]["labels"]["position"] = "overlay"
+        spec["board"]["detail_placement"] = "right"
+        errors = validate_spec.validate(spec, ROOT, check_files=False)
+        self.assertTrue(any("detail_placement" in error for error in errors))
+        self.assertTrue(any("labels.position" in error for error in errors))
 
     def test_white_edge_inspection_distinguishes_valid_frame(self):
         try:
@@ -207,14 +229,40 @@ class ValidateTests(unittest.TestCase):
 
 
 class ComposeTests(unittest.TestCase):
-    def test_reference_geometry_matches_v12_contract(self):
+    def test_reference_geometry_matches_v13_contract(self):
         layout = compose_board._layout(base_spec(), 6144, 3456)
-        self.assertEqual(layout["frame_width"], 72)
-        self.assertEqual(layout["title_rect"], {"x": 72, "y": 72, "width": 6000, "height": 80})
+        self.assertEqual(layout["outer_frame"]["width_px"], 72)
+        self.assertEqual(layout["title_rect"], {"x": 72, "y": 72, "width": 6000, "height": 96})
         self.assertEqual(layout["footer_rect"], {"x": 72, "y": 3320, "width": 6000, "height": 64})
-        self.assertEqual(layout["region_rects"]["body"], {"x": 72, "y": 152, "width": 2736, "height": 3168})
-        self.assertEqual(layout["region_rects"]["face"], {"x": 2840, "y": 152, "width": 1424, "height": 3168})
-        self.assertEqual(layout["region_rects"]["detail"], {"x": 4296, "y": 152, "width": 1776, "height": 3168})
+        self.assertEqual(layout["region_rects"]["body"], {"x": 72, "y": 192, "width": 3696, "height": 2104})
+        self.assertEqual(layout["region_rects"]["face"], {"x": 3800, "y": 192, "width": 2272, "height": 2104})
+        self.assertEqual(layout["region_rects"]["detail"], {"x": 72, "y": 2328, "width": 6000, "height": 968})
+        self.assertEqual(layout["section_title_rects"]["detail_facial"]["width"], 1482)
+        self.assertEqual(layout["section_title_rects"]["detail_style"]["width"], 2988)
+        self.assertEqual(layout["section_title_rects"]["detail_footwear"]["width"], 1482)
+
+    def test_chinese_label_catalog_keeps_character_side_mapping(self):
+        catalog = json.loads((ROOT / "mm-character-assets/assets/label-catalog.json").read_text(encoding="utf-8"))
+        self.assertEqual(catalog["body_views"]["left_profile"], "全身左侧")
+        self.assertEqual(catalog["face_views"]["right_profile"], "右侧面部")
+        self.assertEqual(catalog["parts"]["footwear_profile"], "鞋履侧面")
+
+    def test_unknown_part_cannot_fall_back_to_raw_id(self):
+        catalog = json.loads((ROOT / "mm-character-assets/assets/label-catalog.json").read_text(encoding="utf-8"))
+        with self.assertRaisesRegex(ValueError, "missing zh-CN"):
+            compose_board._cell_text("detail", "unknown_custom_part", catalog)
+
+    def test_body_only_keeps_section_and_cell_label_regions(self):
+        spec = base_spec()
+        spec["inputs"]["board_content"] = "body_only"
+        spec["board"]["face_views"] = []
+        spec["board"]["detail_ids"] = []
+        layout = compose_board._layout(spec, 4096, 2304)
+        self.assertIsNotNone(layout["section_title_rects"]["body"])
+        self.assertEqual(len(layout["cell_rects"]["body"]), 3)
+        self.assertTrue(all(cell["label_rect"]["height"] > 0 for cell in layout["cell_rects"]["body"]))
+        self.assertEqual(layout["cell_rects"]["face"], [])
+        self.assertEqual(layout["cell_rects"]["detail"], [])
 
     def test_composer_exports_requested_size_from_passed_assets(self):
         try:
@@ -264,10 +312,17 @@ class ComposeTests(unittest.TestCase):
             self.assertEqual(layout["orientation"], "landscape")
             self.assertEqual(layout["aspect_ratio"], [16, 9])
             self.assertEqual(len(layout["cell_rects"]["detail"]), 8)
+            self.assertEqual(len(layout["cell_labels"]), 14)
+            self.assertTrue(all(item["role"] in {"board_title", "section_title", "cell_label", "footer_note"} for item in layout["labels"]))
+            image_rects = {cell["cell_id"]: cell["rect"] for group in layout["cell_rects"].values() for cell in group}
+            for label in (item for item in layout["labels"] if item["role"] == "cell_label"):
+                image_rect = image_rects[label["cell_id"]]
+                self.assertGreaterEqual(label["rect"]["y"], image_rect["y"] + image_rect["height"])
             for group in layout["cell_rects"].values():
-                for rect in group:
-                    self.assertLessEqual(rect["x"] + rect["width"], 1024 - layout["frame_width"])
-                    self.assertLessEqual(rect["y"] + rect["height"], 576 - layout["frame_width"])
+                for cell in group:
+                    rect = cell["rect"]
+                    self.assertLessEqual(rect["x"] + rect["width"], 1024 - layout["outer_frame"]["width_px"])
+                    self.assertLessEqual(cell["label_rect"]["y"] + cell["label_rect"]["height"], 576 - layout["outer_frame"]["width_px"])
 
     def test_composer_refuses_failed_required_view(self):
         spec = base_spec()

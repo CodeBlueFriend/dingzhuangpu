@@ -9,7 +9,9 @@ import sys
 from pathlib import Path
 
 DIMENSIONS = ("clothing_layers", "head_design", "patterns_materials", "accessories_props", "side_asymmetry", "occlusion_back")
-CORE_DETAILS = ["eyes_brows", "nose_lips", "footwear_three_quarter", "footwear_profile"]
+FACIAL_DETAILS = ["eyes_brows", "nose_lips"]
+FOOTWEAR_DETAILS = ["footwear_three_quarter", "footwear_profile"]
+CORE_DETAILS = FACIAL_DETAILS + FOOTWEAR_DETAILS
 DETAIL_CATALOGUES = {
     "modern": ["hair_back", "neckline", "waist_or_hem", "cuff", "material_detail", "lower_garment_structure"],
     "historical": ["hair_back", "neckline_layers", "sleeve_structure", "waist_structure", "main_pattern", "hem_structure"],
@@ -94,30 +96,30 @@ def plan(spec: dict) -> dict:
         face_views: list[str] = []
         detail_ids: list[str] = []
         required_detail_categories: list[str] = []
-        layout_id = "landscape_body_only"
+        layout_id = "landscape_top_views_body_only"
         canvas = [4096, 2304]
     elif detail_level == "compact":
         face_views = list(board.get("face_views") or ["front", "left_three_quarter"])
         detail_ids = _dedupe(required_details + required_parts)[:2]
         required_detail_categories = []
-        layout_id = "landscape_compact_three_view"
+        layout_id = "landscape_top_views_bottom_details_compact"
         canvas = [4096, 2304]
     else:
         face_views = list(board.get("face_views") or ["front", "left_three_quarter", "left_profile"])
         family_details = DETAIL_CATALOGUES[_profile_family(spec)]
-        detail_ids = _dedupe(CORE_DETAILS + required_details + required_parts + family_details)
         target_count = 10 if tier == "complex" or len(body_views) >= 4 else 8
-        # Required and core details are never truncated. Optional catalogue entries fill capacity only.
-        if len(detail_ids) > target_count:
-            mandatory = set(CORE_DETAILS + required_details + required_parts)
-            detail_ids = [item for item in detail_ids if item in mandatory] + [item for item in detail_ids if item not in mandatory][:max(0, target_count - len(mandatory))]
-            detail_ids = _dedupe(detail_ids)
+        # Facial cells stay first and footwear stays last so V1.3 group titles bind to real content.
+        mandatory_middle = _dedupe(required_details + required_parts)
+        optional_middle = [item for item in family_details if item not in mandatory_middle and item not in CORE_DETAILS]
+        middle_capacity = max(0, target_count - len(CORE_DETAILS))
+        middle = mandatory_middle + optional_middle[:max(0, middle_capacity - len(mandatory_middle))]
+        detail_ids = _dedupe(FACIAL_DETAILS + middle + FOOTWEAR_DETAILS)
         required_detail_categories = ["eyes_brows", "nose_lips", "footwear_or_feet"]
         if tier == "complex" or len(body_views) >= 4:
-            layout_id = "landscape_enhanced_complex"
+            layout_id = "landscape_top_views_bottom_details_complex"
             canvas = [7680, 4320]
         else:
-            layout_id = "landscape_enhanced_three_view"
+            layout_id = "landscape_top_views_bottom_details"
             canvas = [6144, 3456]
 
     frame = _frame_width(canvas[1])
@@ -139,7 +141,19 @@ def plan(spec: dict) -> dict:
             "aspect_ratio": [16, 9],
             "outer_frame": {"enabled": True, "color": "#FFFFFF", "width_px": frame},
             "inner_background": "#F4F5F6",
-            "region_width_ratios": [0.46, 0.24, 0.30],
+            "upper_region_width_ratios": [0.62, 0.38],
+            "content_height_ratios": [0.685, 0.315],
+            "detail_placement": "bottom",
+            "labels": {
+                "enabled": True,
+                "language": "zh-CN",
+                "section_titles_enabled": True,
+                "per_cell_labels_enabled": True,
+                "position": "outside_image",
+                "cell_label_height_px": 48,
+                "title_color": "#30343B",
+                "label_color": "#4B515B",
+            },
             "required_detail_categories": required_detail_categories,
             "body_views": body_views,
             "face_views": face_views,

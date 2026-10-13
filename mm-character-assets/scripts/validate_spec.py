@@ -17,6 +17,8 @@ VALID_VIEWS = {"front", "left_profile", "back", "right_profile", "left_three_qua
 ENHANCED_FACE_VIEWS = {"front", "left_three_quarter", "left_profile"}
 ENHANCED_DETAIL_IDS = {"eyes_brows", "nose_lips", "footwear_three_quarter", "footwear_profile"}
 ENHANCED_DETAIL_CATEGORIES = {"eyes_brows", "nose_lips", "footwear_or_feet"}
+FACIAL_DETAIL_ORDER = ["eyes_brows", "nose_lips"]
+FOOTWEAR_DETAIL_ORDER = ["footwear_three_quarter", "footwear_profile"]
 
 
 def _nonempty(value: object) -> bool:
@@ -62,8 +64,8 @@ def validate(spec: dict, base: Path, target_state: str | None = None, check_file
             errors.append(f"missing required field: {key}")
     if errors:
         return errors
-    if spec["schema_version"] != "1.1":
-        errors.append("V1.2 requires schema_version 1.1")
+    if spec["schema_version"] != "1.2":
+        errors.append("V1.3 requires schema_version 1.2")
 
     state = target_state or spec["project_state"]
     if state not in STAGE_ORDER and state not in TERMINAL_STATES and state != "repairing":
@@ -103,25 +105,45 @@ def validate(spec: dict, base: Path, target_state: str | None = None, check_file
             errors.append("body_only boards cannot contain face or detail cells")
     board_fields = (
         "detail_level", "orientation", "aspect_ratio", "outer_frame", "inner_background",
-        "region_width_ratios", "required_detail_categories", "target_canvas",
+        "upper_region_width_ratios", "content_height_ratios", "detail_placement", "labels",
+        "required_detail_categories", "target_canvas",
     )
     for key in board_fields:
         if key not in board:
-            errors.append(f"board.{key} is required by V1.2")
+            errors.append(f"board.{key} is required by V1.3")
     target = board.get("target_canvas", [])
     ratio = board.get("aspect_ratio", [])
     if len(target) == 2 and (target[0] <= target[1] or target[0] * 9 != target[1] * 16):
         errors.append("board.target_canvas must be landscape 16:9")
     if board.get("orientation") != "landscape" or ratio != [16, 9]:
-        errors.append("V1.2 default board must declare landscape 16:9")
+        errors.append("V1.3 default board must declare landscape 16:9")
     frame = board.get("outer_frame", {})
     if frame.get("enabled") is not True or str(frame.get("color", "")).upper() != "#FFFFFF":
         errors.append("board.outer_frame must be enabled and opaque #FFFFFF")
     if len(target) == 2 and frame.get("width_px") != _expected_frame(target[1]):
         errors.append("board.outer_frame.width_px must be about 2% of short edge, rounded to 8px")
-    ratios = board.get("region_width_ratios", [])
-    if len(ratios) != 3 or abs(sum(ratios) - 1.0) > 0.0001 or any(value <= 0 for value in ratios):
-        errors.append("board.region_width_ratios must contain three positive values summing to 1")
+    ratios = board.get("upper_region_width_ratios", [])
+    if len(ratios) != 2 or abs(sum(ratios) - 1.0) > 0.0001 or any(value <= 0 for value in ratios):
+        errors.append("board.upper_region_width_ratios must contain two positive values summing to 1")
+    height_ratios = board.get("content_height_ratios", [])
+    if len(height_ratios) != 2 or abs(sum(height_ratios) - 1.0) > 0.0001 or any(value <= 0 for value in height_ratios):
+        errors.append("board.content_height_ratios must contain two positive values summing to 1")
+    if board.get("detail_placement") != "bottom":
+        errors.append("V1.3 detail_placement must be bottom")
+    labels = board.get("labels", {})
+    label_contract = {
+        "enabled": True, "language": "zh-CN", "section_titles_enabled": True,
+        "per_cell_labels_enabled": True, "position": "outside_image",
+    }
+    for key, expected in label_contract.items():
+        if labels.get(key) != expected:
+            errors.append(f"board.labels.{key} must be {expected!r}")
+    if not isinstance(labels.get("cell_label_height_px"), int) or labels.get("cell_label_height_px", 0) <= 0:
+        errors.append("board.labels.cell_label_height_px must be a positive integer")
+    for key in ("title_color", "label_color"):
+        value = labels.get(key, "")
+        if not isinstance(value, str) or len(value) != 7 or not value.startswith("#"):
+            errors.append(f"board.labels.{key} must be a hex RGB color")
     if board.get("detail_level") == "enhanced" and spec["inputs"].get("board_content") == "asset_board":
         missing_faces = sorted(ENHANCED_FACE_VIEWS - set(board.get("face_views", [])))
         missing_details = sorted(ENHANCED_DETAIL_IDS - set(board.get("detail_ids", [])))
@@ -132,6 +154,9 @@ def validate(spec: dict, base: Path, target_state: str | None = None, check_file
             errors.append("enhanced board lacks core details: " + ", ".join(missing_details))
         if missing_categories:
             errors.append("enhanced board lacks required detail categories: " + ", ".join(missing_categories))
+        details = board.get("detail_ids", [])
+        if details[:2] != FACIAL_DETAIL_ORDER or details[-2:] != FOOTWEAR_DETAIL_ORDER:
+            errors.append("V1.3 enhanced detail order must start with facial cells and end with footwear cells")
 
     budget = spec["generation"].get("budget", {})
     for key in ("max_image_requests", "max_total_repairs", "max_repairs_per_unit"):
@@ -201,6 +226,11 @@ def validate(spec: dict, base: Path, target_state: str | None = None, check_file
             readable_boards = [_resolve(base, artifact.get("path", "")) for artifact in board_assets if _resolve(base, artifact.get("path", "")).is_file()]
             if readable_boards and not any(_has_white_edges(path) for path in readable_boards):
                 errors.append("assembled board does not have verifiable opaque white outer edges")
+        manifests = [a for a in spec["artifacts"] if a.get("type") == "layout_manifest"]
+        if not manifests:
+            errors.append("V1.3 assembled requires a layout_manifest artifact")
+        elif check_files and not any(_resolve(base, a.get("path", "")).is_file() for a in manifests):
+            errors.append("assembled layout_manifest artifact is not readable")
 
     if state == "delivered":
         if spec["qa"].get("status") != "pass":
