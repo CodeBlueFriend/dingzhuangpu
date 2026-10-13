@@ -12,7 +12,7 @@
     "identity", "body", "costume", "complexity", "board", "generation", "qa", "artifacts"
   ],
   "properties": {
-    "schema_version": {"const": "1.0"},
+    "schema_version": {"const": "1.1"},
     "character_id": {"type": "string", "minLength": 1},
     "identity_version": {"type": "integer", "minimum": 1},
     "look_id": {"type": "string", "minLength": 1},
@@ -126,10 +126,28 @@
     },
     "board": {
       "type": "object",
-      "required": ["mode", "layout_id", "body_views", "face_views", "detail_ids", "target_canvas", "actual_canvas"],
+      "required": ["mode", "layout_id", "detail_level", "orientation", "aspect_ratio", "outer_frame", "inner_background", "region_width_ratios", "required_detail_categories", "body_views", "face_views", "detail_ids", "target_canvas", "actual_canvas"],
       "properties": {
         "mode": {"enum": ["auto", "three_view", "multiview", "custom"]},
         "layout_id": {"type": "string", "minLength": 1},
+        "detail_level": {"enum": ["enhanced", "compact"]},
+        "orientation": {"const": "landscape"},
+        "aspect_ratio": {"const": [16, 9]},
+        "outer_frame": {
+          "type": "object",
+          "required": ["enabled", "color", "width_px"],
+          "properties": {
+            "enabled": {"const": true},
+            "color": {"const": "#FFFFFF"},
+            "width_px": {"type": "integer", "minimum": 1}
+          }
+        },
+        "inner_background": {"type": "string", "pattern": "^#[0-9A-Fa-f]{6}$"},
+        "region_width_ratios": {
+          "type": "array", "minItems": 3, "maxItems": 3,
+          "prefixItems": [{"type": "number", "exclusiveMinimum": 0}, {"type": "number", "exclusiveMinimum": 0}, {"type": "number", "exclusiveMinimum": 0}]
+        },
+        "required_detail_categories": {"type": "array", "uniqueItems": true, "items": {"type": "string"}},
         "body_views": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string"}},
         "face_views": {"type": "array", "uniqueItems": true, "items": {"type": "string"}},
         "detail_ids": {"type": "array", "uniqueItems": true, "items": {"type": "string"}},

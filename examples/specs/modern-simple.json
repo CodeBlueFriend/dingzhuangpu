@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.0",
+  "schema_version": "1.1",
   "character_id": "demo_modern_001",
   "identity_version": 1,
   "look_id": "urban_white_shirt",
@@ -10,7 +10,7 @@
   "rendering_style": "photoreal",
   "spec_revision": 1,
   "reference_registry": [
-    {"reference_id": "ref_face_001", "asset_path": "../generated/modern-urban-board.png", "role": ["identity"], "scope": ["face"], "source": "generated", "limitations": ["演示资产板代替原始头像，仅用于规格示例"]}
+    {"reference_id": "ref_face_001", "asset_path": "../generated/modern-urban-board-v1.2.png", "role": ["identity"], "scope": ["face"], "source": "generated", "limitations": ["演示资产板代替原始头像，仅用于规格示例"]}
   ],
   "part_coverage": [
     {"part_id": "shirt_01", "required_by": "user", "anatomical_side": "not_applicable", "attachment_location": "torso", "visible_in": ["front", "left_profile", "back"], "occluded_in": [], "coverage_cells": ["front", "left_profile", "back"], "detail_priority": "required", "reference_source": "design_completion", "qa_status": "pending"}
@@ -29,8 +29,8 @@
   "body": {"height_cm": null, "proportions": "natural", "source": "design_default"},
   "costume": {"layers": [{"id": "shirt_01", "description": "无图案白衬衫与深色直筒长裤"}], "hair": {"id": "hair_01", "description": "简洁短发"}, "headwear": [], "accessories": [], "footwear": {"id": "shoe_01", "description": "黑色低帮鞋"}, "front_structure": {"description": "单排纽扣"}, "side_structure": {"description": "直身轮廓"}, "back_structure": {"description": "简洁后育克"}, "forbidden_additions": ["耳环", "项链", "印花", "胸针"]},
   "complexity": {"dimensions": {"clothing_layers": 0, "head_design": 0, "patterns_materials": 0, "accessories_props": 0, "side_asymmetry": 0, "occlusion_back": 0}, "score": 0, "tier": "simple", "required_details": []},
-  "board": {"mode": "auto", "layout_id": "simple_three_view", "body_views": ["front", "left_profile", "back"], "face_views": ["front", "left_three_quarter"], "detail_ids": [], "target_canvas": [4096, 3072], "actual_canvas": null},
-  "generation": {"strategy": "anchor_then_views", "adapter": "host-image-tool", "anchor_asset_id": null, "budget": {"max_image_requests": 16, "max_total_repairs": 4, "max_repairs_per_unit": 2}, "calls": []},
+  "board": {"mode": "auto", "layout_id": "landscape_enhanced_three_view", "detail_level": "enhanced", "orientation": "landscape", "aspect_ratio": [16, 9], "outer_frame": {"enabled": true, "color": "#FFFFFF", "width_px": 72}, "inner_background": "#F4F5F6", "region_width_ratios": [0.46, 0.24, 0.30], "required_detail_categories": ["eyes_brows", "nose_lips", "footwear_or_feet"], "body_views": ["front", "left_profile", "back"], "face_views": ["front", "left_three_quarter", "left_profile"], "detail_ids": ["eyes_brows", "nose_lips", "footwear_three_quarter", "footwear_profile", "hair_back", "neckline", "waist_or_hem", "cuff"], "target_canvas": [6144, 3456], "actual_canvas": null},
+  "generation": {"strategy": "anchor_then_views", "adapter": "host-image-tool", "anchor_asset_id": null, "budget": {"max_image_requests": 24, "max_total_repairs": 6, "max_repairs_per_unit": 2}, "calls": []},
   "qa": {"status": "pending", "checks": [], "unverified_items": ["原始头像未包含在公开演示仓库"]},
   "artifacts": []
 }

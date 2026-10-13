@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import sys
 from pathlib import Path
 
@@ -15,6 +14,9 @@ STAGE_ORDER = {
 }
 TERMINAL_STATES = {"blocked", "needs_review", "draft_failed", "prompt_package_ready", "cancelled"}
 VALID_VIEWS = {"front", "left_profile", "back", "right_profile", "left_three_quarter", "right_three_quarter"}
+ENHANCED_FACE_VIEWS = {"front", "left_three_quarter", "left_profile"}
+ENHANCED_DETAIL_IDS = {"eyes_brows", "nose_lips", "footwear_three_quarter", "footwear_profile"}
+ENHANCED_DETAIL_CATEGORIES = {"eyes_brows", "nose_lips", "footwear_or_feet"}
 
 
 def _nonempty(value: object) -> bool:
@@ -24,6 +26,27 @@ def _nonempty(value: object) -> bool:
 def _resolve(base: Path, value: str) -> Path:
     path = Path(value)
     return path if path.is_absolute() else base / path
+
+
+def _expected_frame(height: int) -> int:
+    return max(8, int((height * 0.02 + 4) // 8 * 8))
+
+
+def _has_white_edges(path: Path) -> bool:
+    try:
+        from PIL import Image
+        with Image.open(path) as image:
+            image = image.convert("RGBA")
+            width, height = image.size
+            samples = [
+                image.getpixel((0, 0)), image.getpixel((width - 1, 0)),
+                image.getpixel((0, height - 1)), image.getpixel((width - 1, height - 1)),
+                image.getpixel((width // 2, 0)), image.getpixel((width // 2, height - 1)),
+                image.getpixel((0, height // 2)), image.getpixel((width - 1, height // 2)),
+            ]
+            return all(pixel == (255, 255, 255, 255) for pixel in samples)
+    except (ImportError, OSError):
+        return False
 
 
 def validate(spec: dict, base: Path, target_state: str | None = None, check_files: bool = True) -> list[str]:
@@ -39,6 +62,8 @@ def validate(spec: dict, base: Path, target_state: str | None = None, check_file
             errors.append(f"missing required field: {key}")
     if errors:
         return errors
+    if spec["schema_version"] != "1.1":
+        errors.append("V1.2 requires schema_version 1.1")
 
     state = target_state or spec["project_state"]
     if state not in STAGE_ORDER and state not in TERMINAL_STATES and state != "repairing":
@@ -76,6 +101,37 @@ def validate(spec: dict, base: Path, target_state: str | None = None, check_file
     if spec["inputs"].get("board_content") == "body_only":
         if board.get("face_views") or board.get("detail_ids"):
             errors.append("body_only boards cannot contain face or detail cells")
+    board_fields = (
+        "detail_level", "orientation", "aspect_ratio", "outer_frame", "inner_background",
+        "region_width_ratios", "required_detail_categories", "target_canvas",
+    )
+    for key in board_fields:
+        if key not in board:
+            errors.append(f"board.{key} is required by V1.2")
+    target = board.get("target_canvas", [])
+    ratio = board.get("aspect_ratio", [])
+    if len(target) == 2 and (target[0] <= target[1] or target[0] * 9 != target[1] * 16):
+        errors.append("board.target_canvas must be landscape 16:9")
+    if board.get("orientation") != "landscape" or ratio != [16, 9]:
+        errors.append("V1.2 default board must declare landscape 16:9")
+    frame = board.get("outer_frame", {})
+    if frame.get("enabled") is not True or str(frame.get("color", "")).upper() != "#FFFFFF":
+        errors.append("board.outer_frame must be enabled and opaque #FFFFFF")
+    if len(target) == 2 and frame.get("width_px") != _expected_frame(target[1]):
+        errors.append("board.outer_frame.width_px must be about 2% of short edge, rounded to 8px")
+    ratios = board.get("region_width_ratios", [])
+    if len(ratios) != 3 or abs(sum(ratios) - 1.0) > 0.0001 or any(value <= 0 for value in ratios):
+        errors.append("board.region_width_ratios must contain three positive values summing to 1")
+    if board.get("detail_level") == "enhanced" and spec["inputs"].get("board_content") == "asset_board":
+        missing_faces = sorted(ENHANCED_FACE_VIEWS - set(board.get("face_views", [])))
+        missing_details = sorted(ENHANCED_DETAIL_IDS - set(board.get("detail_ids", [])))
+        missing_categories = sorted(ENHANCED_DETAIL_CATEGORIES - set(board.get("required_detail_categories", [])))
+        if missing_faces:
+            errors.append("enhanced board lacks face views: " + ", ".join(missing_faces))
+        if missing_details:
+            errors.append("enhanced board lacks core details: " + ", ".join(missing_details))
+        if missing_categories:
+            errors.append("enhanced board lacks required detail categories: " + ", ".join(missing_categories))
 
     budget = spec["generation"].get("budget", {})
     for key in ("max_image_requests", "max_total_repairs", "max_repairs_per_unit"):
@@ -139,6 +195,12 @@ def validate(spec: dict, base: Path, target_state: str | None = None, check_file
         actual = board.get("actual_canvas")
         if not isinstance(actual, list) or len(actual) != 2 or not all(isinstance(v, int) and v > 0 for v in actual):
             errors.append("assembled requires a positive two-value actual_canvas")
+        elif actual != target:
+            errors.append("assembled actual_canvas must equal the planned target_canvas")
+        if check_files:
+            readable_boards = [_resolve(base, artifact.get("path", "")) for artifact in board_assets if _resolve(base, artifact.get("path", "")).is_file()]
+            if readable_boards and not any(_has_white_edges(path) for path in readable_boards):
+                errors.append("assembled board does not have verifiable opaque white outer edges")
 
     if state == "delivered":
         if spec["qa"].get("status") != "pass":

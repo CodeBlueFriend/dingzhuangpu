@@ -9,6 +9,12 @@ import sys
 from pathlib import Path
 
 DIMENSIONS = ("clothing_layers", "head_design", "patterns_materials", "accessories_props", "side_asymmetry", "occlusion_back")
+CORE_DETAILS = ["eyes_brows", "nose_lips", "footwear_three_quarter", "footwear_profile"]
+DETAIL_CATALOGUES = {
+    "modern": ["hair_back", "neckline", "waist_or_hem", "cuff", "material_detail", "lower_garment_structure"],
+    "historical": ["hair_back", "neckline_layers", "sleeve_structure", "waist_structure", "main_pattern", "hem_structure"],
+    "special": ["back_connection", "upper_body_connection", "waist_mount", "glove_or_cuff", "side_asymmetry", "material_interface"],
+}
 
 
 def tier_for(score: int) -> str:
@@ -17,6 +23,23 @@ def tier_for(score: int) -> str:
     if score <= 7:
         return "medium"
     return "complex"
+
+
+def _dedupe(values: list[str]) -> list[str]:
+    return list(dict.fromkeys(value for value in values if value))
+
+
+def _frame_width(height: int) -> int:
+    return max(8, int((height * 0.02 + 4) // 8 * 8))
+
+
+def _profile_family(spec: dict) -> str:
+    text = " ".join([spec.get("routing", {}).get("genre", ""), *spec.get("routing", {}).get("profiles", [])]).lower()
+    if any(token in text for token in ("histor", "ancient", "period", "古装", "年代")):
+        return "historical"
+    if any(token in text for token in ("scifi", "science", "tactical", "fantasy", "uniform", "科幻", "战术", "制服", "奇幻")):
+        return "special"
+    return "modern"
 
 
 def plan(spec: dict) -> dict:
@@ -54,7 +77,7 @@ def plan(spec: dict) -> dict:
     if len(body_views) != len(set(body_views)):
         raise ValueError("body_views contains duplicates")
 
-    required_details = list(dict.fromkeys(spec["complexity"].get("required_details", [])))
+    required_details = _dedupe(spec["complexity"].get("required_details", []))
     required_parts = [
         part["part_id"] for part in spec.get("part_coverage", [])
         if part.get("detail_priority") == "required"
@@ -63,22 +86,41 @@ def plan(spec: dict) -> dict:
     ]
     required_details.extend(required_parts)
 
+    detail_level = board.get("detail_level", "enhanced")
+    if detail_level not in {"enhanced", "compact"}:
+        raise ValueError("board.detail_level must be enhanced or compact")
+
     if content == "body_only":
         face_views: list[str] = []
         detail_ids: list[str] = []
-        layout_id = "body_only_three_view" if len(body_views) == 3 else "complex_asset_board"
+        required_detail_categories: list[str] = []
+        layout_id = "landscape_body_only"
+        canvas = [4096, 2304]
+    elif detail_level == "compact":
+        face_views = list(board.get("face_views") or ["front", "left_three_quarter"])
+        detail_ids = _dedupe(required_details + required_parts)[:2]
+        required_detail_categories = []
+        layout_id = "landscape_compact_three_view"
+        canvas = [4096, 2304]
     else:
-        face_views = list(board.get("face_views") or (["front", "left_three_quarter"] if tier == "simple" else ["front", "left_three_quarter", "left_profile"]))
-        max_details = 1 if tier == "simple" else 3 if tier == "medium" else 4
-        detail_ids = required_details[:max_details]
-        if tier == "simple" and len(body_views) == 3:
-            layout_id = "simple_three_view"
-        elif tier == "complex" or len(body_views) >= 4:
-            layout_id = "complex_asset_board"
+        face_views = list(board.get("face_views") or ["front", "left_three_quarter", "left_profile"])
+        family_details = DETAIL_CATALOGUES[_profile_family(spec)]
+        detail_ids = _dedupe(CORE_DETAILS + required_details + required_parts + family_details)
+        target_count = 10 if tier == "complex" or len(body_views) >= 4 else 8
+        # Required and core details are never truncated. Optional catalogue entries fill capacity only.
+        if len(detail_ids) > target_count:
+            mandatory = set(CORE_DETAILS + required_details + required_parts)
+            detail_ids = [item for item in detail_ids if item in mandatory] + [item for item in detail_ids if item not in mandatory][:max(0, target_count - len(mandatory))]
+            detail_ids = _dedupe(detail_ids)
+        required_detail_categories = ["eyes_brows", "nose_lips", "footwear_or_feet"]
+        if tier == "complex" or len(body_views) >= 4:
+            layout_id = "landscape_enhanced_complex"
+            canvas = [7680, 4320]
         else:
-            layout_id = "standard_asset_board"
+            layout_id = "landscape_enhanced_three_view"
+            canvas = [6144, 3456]
 
-    canvas = [6144, 4096] if layout_id == "complex_asset_board" else [4096, 3072]
+    frame = _frame_width(canvas[1])
     base_requests = len(body_views) + len(face_views) + len(detail_ids)
     if "front" in body_views:
         base_requests -= 1  # 正面全身基准同时作为主视图
@@ -92,6 +134,13 @@ def plan(spec: dict) -> dict:
         "board": {
             "mode": mode,
             "layout_id": layout_id,
+            "detail_level": detail_level,
+            "orientation": "landscape",
+            "aspect_ratio": [16, 9],
+            "outer_frame": {"enabled": True, "color": "#FFFFFF", "width_px": frame},
+            "inner_background": "#F4F5F6",
+            "region_width_ratios": [0.46, 0.24, 0.30],
+            "required_detail_categories": required_detail_categories,
             "body_views": body_views,
             "face_views": face_views,
             "detail_ids": detail_ids,

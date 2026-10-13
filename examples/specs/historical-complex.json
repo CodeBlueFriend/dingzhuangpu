@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.0",
+  "schema_version": "1.1",
   "character_id": "demo_historical_001",
   "identity_version": 1,
   "look_id": "fictional_court_robe",
@@ -9,7 +9,7 @@
   "project_state": "spec_locked",
   "rendering_style": "photoreal",
   "spec_revision": 1,
-  "reference_registry": [{"reference_id": "ref_face_001", "asset_path": "../generated/historical-fantasy-board.png", "role": ["identity", "costume"], "scope": ["face", "look"], "source": "generated", "limitations": ["架空影视造型，不代表历史考据"]}],
+  "reference_registry": [{"reference_id": "ref_face_001", "asset_path": "../generated/historical-fantasy-board-v1.2.png", "role": ["identity", "costume"], "scope": ["face", "look"], "source": "generated", "limitations": ["架空影视造型，不代表历史考据"]}],
   "part_coverage": [
     {"part_id": "headpiece_01", "required_by": "design", "anatomical_side": "center", "attachment_location": "hair_bun", "visible_in": ["front", "left_profile", "back"], "occluded_in": [], "coverage_cells": ["front", "back", "detail_headpiece_01"], "detail_priority": "required", "reference_source": "design_completion", "qa_status": "pending"},
     {"part_id": "belt_01", "required_by": "design", "anatomical_side": "center", "attachment_location": "waist", "visible_in": ["front", "left_profile", "back"], "occluded_in": [], "coverage_cells": ["front", "detail_belt_01"], "detail_priority": "required", "reference_source": "design_completion", "qa_status": "pending"}
@@ -23,8 +23,8 @@
   "body": {"height_cm": null, "proportions": "natural", "source": "design_default"},
   "costume": {"layers": [{"id": "inner_01", "description": "米白交领内层"}, {"id": "outer_01", "description": "黛青广袖外层"}], "hair": {"id": "hair_01", "description": "高盘发，背面发髻清晰"}, "headwear": [{"id": "headpiece_01", "description": "中心金属发冠"}], "accessories": [{"id": "belt_01", "description": "深红织带腰封"}], "footwear": {"id": "shoe_01", "description": "深色布靴"}, "front_structure": {"description": "交领与腰封"}, "side_structure": {"description": "广袖层次"}, "back_structure": {"description": "发髻与外袍后中结构"}, "forbidden_additions": ["具体朝代徽记", "披帛", "玉佩堆叠"]},
   "complexity": {"dimensions": {"clothing_layers": 2, "head_design": 2, "patterns_materials": 1, "accessories_props": 1, "side_asymmetry": 0, "occlusion_back": 2}, "score": 8, "tier": "complex", "required_details": ["headpiece_01", "belt_01"]},
-  "board": {"mode": "auto", "layout_id": "complex_asset_board", "body_views": ["front", "left_profile", "back", "left_three_quarter"], "face_views": ["front", "left_three_quarter", "left_profile"], "detail_ids": ["headpiece_01", "belt_01"], "target_canvas": [6144, 4096], "actual_canvas": null},
-  "generation": {"strategy": "anchor_then_views", "adapter": "host-image-tool", "anchor_asset_id": null, "budget": {"max_image_requests": 16, "max_total_repairs": 4, "max_repairs_per_unit": 2}, "calls": []},
+  "board": {"mode": "auto", "layout_id": "landscape_enhanced_complex", "detail_level": "enhanced", "orientation": "landscape", "aspect_ratio": [16, 9], "outer_frame": {"enabled": true, "color": "#FFFFFF", "width_px": 88}, "inner_background": "#F4F5F6", "region_width_ratios": [0.46, 0.24, 0.30], "required_detail_categories": ["eyes_brows", "nose_lips", "footwear_or_feet"], "body_views": ["front", "left_profile", "back", "left_three_quarter"], "face_views": ["front", "left_three_quarter", "left_profile"], "detail_ids": ["eyes_brows", "nose_lips", "footwear_three_quarter", "footwear_profile", "headpiece_01", "belt_01", "hair_back", "neckline_layers", "sleeve_structure", "waist_structure"], "target_canvas": [7680, 4320], "actual_canvas": null},
+  "generation": {"strategy": "anchor_then_views", "adapter": "host-image-tool", "anchor_asset_id": null, "budget": {"max_image_requests": 24, "max_total_repairs": 6, "max_repairs_per_unit": 2}, "calls": []},
   "qa": {"status": "pending", "checks": [], "unverified_items": ["展示图为一次生成资产板，跨格一致性需人工复核"]},
   "artifacts": []
 }

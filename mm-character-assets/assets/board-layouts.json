@@ -1,33 +1,53 @@
 {
-  "schema_version": "1.0",
+  "schema_version": "1.1",
+  "defaults": {
+    "orientation": "landscape",
+    "aspect_ratio": [16, 9],
+    "frame_color": "#FFFFFF",
+    "inner_background": "#F4F5F6",
+    "region_width_ratios": [0.46, 0.24, 0.30],
+    "column_gap_at_6144": 32,
+    "cell_gap_at_6144": 24
+  },
   "layouts": {
-    "simple_three_view": {
-      "canvas": [4096, 3072],
-      "body_columns": 3,
-      "body_fraction": 0.75,
-      "max_face_cells": 2,
-      "max_detail_cells": 1
+    "landscape_enhanced_three_view": {
+      "canvas": [6144, 3456],
+      "frame_width": 72,
+      "body_views": 3,
+      "face_cells": 3,
+      "detail_columns": 2,
+      "detail_rows": 4,
+      "detail_cells": 8
     },
-    "standard_asset_board": {
-      "canvas": [4096, 3072],
-      "body_columns": 3,
-      "body_fraction": 0.70,
-      "max_face_cells": 3,
-      "max_detail_cells": 3
+    "landscape_enhanced_complex": {
+      "canvas": [7680, 4320],
+      "frame_width": 88,
+      "body_views": 4,
+      "face_cells": 3,
+      "detail_columns": 2,
+      "detail_rows": 5,
+      "detail_cells": 10
     },
-    "complex_asset_board": {
-      "canvas": [6144, 4096],
-      "body_columns": 4,
-      "body_fraction": 0.68,
-      "max_face_cells": 3,
-      "max_detail_cells": 4
+    "landscape_compact_three_view": {
+      "canvas": [4096, 2304],
+      "frame_width": 48,
+      "body_views": 3,
+      "face_cells": 2,
+      "detail_cells_max": 2
     },
-    "body_only_three_view": {
-      "canvas": [4096, 3072],
-      "body_columns": 3,
-      "body_fraction": 1.0,
-      "max_face_cells": 0,
-      "max_detail_cells": 0
+    "landscape_body_only": {
+      "canvas": [4096, 2304],
+      "frame_width": 48,
+      "face_cells": 0,
+      "detail_cells": 0
     }
+  },
+  "geometry_example_6144x3456": {
+    "inner": [72, 72, 6000, 3312],
+    "title": [72, 72, 6000, 80],
+    "body_region": [72, 152, 2736, 3168],
+    "face_region": [2840, 152, 1424, 3168],
+    "detail_region": [4296, 152, 1776, 3168],
+    "footer": [72, 3320, 6000, 64]
   }
 }

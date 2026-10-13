@@ -1,6 +1,6 @@
 interface:
   display_name: "定妆谱"
-  short_description: "从人物头像生成可追溯、可续做的固定角色多视角资产板"
+  short_description: "从人物头像生成横向白框、细节丰富、可续做的多视角资产板"
   icon_small: "./assets/icon.svg"
   icon_large: "./assets/icon.svg"
   brand_color: "#6F4E37"

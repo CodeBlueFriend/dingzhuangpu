@@ -15,7 +15,7 @@ from mm_character_assets_import import compose_board, plan_board, validate_spec 
 
 def base_spec() -> dict:
     return {
-        "schema_version": "1.0",
+        "schema_version": "1.1",
         "character_id": "char_test",
         "identity_version": 1,
         "look_id": "look_001",
@@ -67,12 +67,19 @@ def base_spec() -> dict:
             "score": 0, "tier": "simple", "required_details": []
         },
         "board": {
-            "mode": "auto", "layout_id": "simple_three_view", "body_views": [],
-            "face_views": [], "detail_ids": [], "target_canvas": [4096, 3072], "actual_canvas": None
+            "mode": "auto", "layout_id": "landscape_enhanced_three_view", "detail_level": "enhanced",
+            "orientation": "landscape", "aspect_ratio": [16, 9],
+            "outer_frame": {"enabled": True, "color": "#FFFFFF", "width_px": 72},
+            "inner_background": "#F4F5F6", "region_width_ratios": [0.46, 0.24, 0.30],
+            "required_detail_categories": ["eyes_brows", "nose_lips", "footwear_or_feet"],
+            "body_views": ["front", "left_profile", "back"],
+            "face_views": ["front", "left_three_quarter", "left_profile"],
+            "detail_ids": ["eyes_brows", "nose_lips", "footwear_three_quarter", "footwear_profile", "hair_back", "neckline", "waist_or_hem", "cuff"],
+            "target_canvas": [6144, 3456], "actual_canvas": None
         },
         "generation": {
             "strategy": "anchor_then_views", "adapter": None, "anchor_asset_id": None,
-            "budget": {"max_image_requests": 16, "max_total_repairs": 4, "max_repairs_per_unit": 2}, "calls": []
+            "budget": {"max_image_requests": 24, "max_total_repairs": 6, "max_repairs_per_unit": 2}, "calls": []
         },
         "qa": {"status": "pending", "checks": [], "unverified_items": []},
         "artifacts": []
@@ -84,7 +91,12 @@ class PlanTests(unittest.TestCase):
         result = plan_board.plan(base_spec())
         self.assertEqual(result["board"]["body_views"], ["front", "left_profile", "back"])
         self.assertEqual(result["complexity"], {"score": 0, "tier": "simple"})
-        self.assertEqual(result["board"]["detail_ids"], [], "a clearly covered shirt must not consume a detail cell")
+        self.assertEqual(result["board"]["layout_id"], "landscape_enhanced_three_view")
+        self.assertEqual(result["board"]["target_canvas"], [6144, 3456])
+        self.assertEqual(result["board"]["face_views"], ["front", "left_three_quarter", "left_profile"])
+        self.assertEqual(len(result["board"]["detail_ids"]), 8)
+        self.assertTrue(set(plan_board.CORE_DETAILS).issubset(result["board"]["detail_ids"]))
+        self.assertEqual(result["budget"]["base_image_requests"], 14)
 
     def test_complex_asymmetry_adds_real_right_side(self):
         spec = base_spec()
@@ -92,6 +104,9 @@ class PlanTests(unittest.TestCase):
         result = plan_board.plan(spec)
         self.assertEqual(result["board"]["body_views"][-1], "right_profile")
         self.assertEqual(len(result["board"]["body_views"]), 4)
+        self.assertEqual(result["board"]["target_canvas"], [7680, 4320])
+        self.assertEqual(len(result["board"]["detail_ids"]), 10)
+        self.assertEqual(result["budget"]["base_image_requests"], 17)
 
     def test_explicit_three_view_is_never_expanded(self):
         spec = base_spec()
@@ -108,6 +123,18 @@ class PlanTests(unittest.TestCase):
         result = plan_board.plan(spec)
         self.assertEqual(result["board"]["face_views"], [])
         self.assertEqual(result["board"]["detail_ids"], [])
+        self.assertEqual(result["board"]["layout_id"], "landscape_body_only")
+        self.assertEqual(result["board"]["target_canvas"], [4096, 2304])
+
+    def test_compact_requires_explicit_detail_level_and_keeps_landscape_frame(self):
+        spec = base_spec()
+        spec["board"]["detail_level"] = "compact"
+        spec["board"]["face_views"] = []
+        spec["board"]["detail_ids"] = []
+        result = plan_board.plan(spec)
+        self.assertEqual(result["board"]["layout_id"], "landscape_compact_three_view")
+        self.assertEqual(result["board"]["face_views"], ["front", "left_three_quarter"])
+        self.assertEqual(result["board"]["outer_frame"]["width_px"], 48)
 
     def test_budget_rejects_oversized_plan(self):
         spec = base_spec()
@@ -145,6 +172,33 @@ class ValidateTests(unittest.TestCase):
         errors = validate_spec.validate(spec, ROOT, check_files=False)
         self.assertTrue(any("remain unresolved" in error for error in errors))
 
+    def test_enhanced_board_cannot_silently_drop_core_details(self):
+        spec = base_spec()
+        spec["board"]["detail_ids"].remove("nose_lips")
+        errors = validate_spec.validate(spec, ROOT, check_files=False)
+        self.assertTrue(any("lacks core details" in error for error in errors))
+
+    def test_wrong_frame_width_and_portrait_canvas_fail(self):
+        spec = base_spec()
+        spec["board"]["target_canvas"] = [3456, 6144]
+        spec["board"]["outer_frame"]["width_px"] = 1
+        errors = validate_spec.validate(spec, ROOT, check_files=False)
+        self.assertTrue(any("landscape 16:9" in error for error in errors))
+        self.assertTrue(any("rounded to 8px" in error for error in errors))
+
+    def test_white_edge_inspection_distinguishes_valid_frame(self):
+        try:
+            from PIL import Image
+        except ImportError:
+            self.skipTest("Pillow is not installed")
+        with tempfile.TemporaryDirectory() as directory:
+            white = Path(directory) / "white.png"
+            dark = Path(directory) / "dark.png"
+            Image.new("RGB", (160, 90), "white").save(white)
+            Image.new("RGB", (160, 90), "#F4F5F6").save(dark)
+            self.assertTrue(validate_spec._has_white_edges(white))
+            self.assertFalse(validate_spec._has_white_edges(dark))
+
     def test_anchor_state_requires_visual_evidence(self):
         spec = base_spec()
         errors = validate_spec.validate(spec, ROOT, target_state="anchor_ready", check_files=False)
@@ -153,6 +207,15 @@ class ValidateTests(unittest.TestCase):
 
 
 class ComposeTests(unittest.TestCase):
+    def test_reference_geometry_matches_v12_contract(self):
+        layout = compose_board._layout(base_spec(), 6144, 3456)
+        self.assertEqual(layout["frame_width"], 72)
+        self.assertEqual(layout["title_rect"], {"x": 72, "y": 72, "width": 6000, "height": 80})
+        self.assertEqual(layout["footer_rect"], {"x": 72, "y": 3320, "width": 6000, "height": 64})
+        self.assertEqual(layout["region_rects"]["body"], {"x": 72, "y": 152, "width": 2736, "height": 3168})
+        self.assertEqual(layout["region_rects"]["face"], {"x": 2840, "y": 152, "width": 1424, "height": 3168})
+        self.assertEqual(layout["region_rects"]["detail"], {"x": 4296, "y": 152, "width": 1776, "height": 3168})
+
     def test_composer_exports_requested_size_from_passed_assets(self):
         try:
             from PIL import Image
@@ -171,12 +234,40 @@ class ComposeTests(unittest.TestCase):
                     "qa_result": "pass", "attempt_count": 1, "required": True
                 })
             spec = base_spec()
+            for view in spec["board"]["face_views"]:
+                path = root / f"face-{view}.png"
+                Image.new("RGB", (320, 320), "#d8b39b").save(path)
+                tasks.append({
+                    "task_id": f"face_{view}", "spec_revision": 1, "view_id": view,
+                    "framing": "face", "status": "succeeded", "asset_path": path.name,
+                    "qa_result": "pass", "attempt_count": 1, "required": True
+                })
+            for detail_id in spec["board"]["detail_ids"]:
+                path = root / f"detail-{detail_id}.png"
+                Image.new("RGB", (240, 180), "#b7a88f").save(path)
+                tasks.append({
+                    "task_id": f"detail_{detail_id}", "spec_revision": 1, "view_id": detail_id,
+                    "detail_id": detail_id, "framing": "detail", "status": "succeeded", "asset_path": path.name,
+                    "qa_result": "pass", "attempt_count": 1, "required": True
+                })
             spec["board"]["body_views"] = list(colors)
             spec["view_tasks"] = tasks
             output = root / "board.png"
             size = compose_board.compose(spec, root, output, width=1024)
-            self.assertEqual(size, (1024, 768))
+            self.assertEqual(size, (1024, 576))
             self.assertTrue(output.is_file())
+            self.assertTrue(output.with_suffix(".layout.json").is_file())
+            with Image.open(output) as image:
+                self.assertEqual(image.getpixel((0, 0)), (255, 255, 255))
+                self.assertEqual(image.getpixel((1023, 575)), (255, 255, 255))
+            layout = json.loads(output.with_suffix(".layout.json").read_text(encoding="utf-8"))
+            self.assertEqual(layout["orientation"], "landscape")
+            self.assertEqual(layout["aspect_ratio"], [16, 9])
+            self.assertEqual(len(layout["cell_rects"]["detail"]), 8)
+            for group in layout["cell_rects"].values():
+                for rect in group:
+                    self.assertLessEqual(rect["x"] + rect["width"], 1024 - layout["frame_width"])
+                    self.assertLessEqual(rect["y"] + rect["height"], 576 - layout["frame_width"])
 
     def test_composer_refuses_failed_required_view(self):
         spec = base_spec()
